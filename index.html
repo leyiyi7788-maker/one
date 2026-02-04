@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>正在跳转...</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding-top: 80px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>正在为您选择最佳线路，请稍候...</h2>
+<p id="status">线路检测中...</p>
+
+<script>
+const LINK_JSON_URL = "https://your-domain.com/links.json";
+const TIMEOUT = 3000;
+
+// 判断设备
+function isMobile() {
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+// 带超时的 fetch 测速
+function testLink(url) {
+  return new Promise(resolve => {
+    const start = performance.now();
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT);
+
+    fetch(url, {
+      method: "HEAD",
+      mode: "no-cors",
+      signal: controller.signal
+    }).then(() => {
+      clearTimeout(timer);
+      resolve({ url, time: performance.now() - start });
+    }).catch(() => {
+      resolve(null);
+    });
+  });
+}
+
+async function startDetect() {
+  const res = await fetch(LINK_JSON_URL);
+  const data = await res.json();
+
+  const mobile = isMobile();
+  const usableLinks = data.links.filter(l =>
+    mobile ? l.mobile : l.pc
+  );
+
+  if (!usableLinks.length) {
+    document.getElementById("status").innerText = "暂无可用线路";
+    return;
+  }
+
+  document.getElementById("status").innerText = "并发检测线路中...";
+
+  const tests = usableLinks.map(l => testLink(l.url));
+  const results = (await Promise.all(tests)).filter(Boolean);
+
+  if (!results.length) {
+    document.getElementById("status").innerText = "所有线路不可访问";
+    return;
+  }
+
+  results.sort((a, b) => a.time - b.time);
+  const best = results[0].url;
+
+  document.getElementById("status").innerText = "即将跳转...";
+  setTimeout(() => {
+    window.location.href = best;
+  }, 500);
+}
+
+startDetect();
+</script>
+
+</body>
+</html>
